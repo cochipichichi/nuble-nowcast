@@ -1,0 +1,17 @@
+<!doctype html><html lang="es" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Historial (7 días) — Ñuble Nowcast</title>
+<link rel="icon" href="assets/icons/icon-192.png"><link rel="stylesheet" href="css/style.css"></head>
+<body><header class="header"><div class="brand"><span class="logo"></span><strong>Historial (7 días)</strong></div><nav><a class="btn" href="./index.html">Inicio</a></nav></header>
+<main class="container"><section class="card"><h1>📚 7 días</h1>
+<div class="grid cards">
+<div class="card"><h3>🌧️ Precipitación (mm)</h3><canvas id="precip" style="width:100%;height:200px"></canvas></div>
+<div class="card"><h3>🌬️ Ráfaga máx (m/s)</h3><canvas id="gusts" style="width:100%;height:200px"></canvas></div>
+<div class="card"><h3>🌡️ Temp. promedio (°C)</h3><canvas id="temp" style="width:100%;height:200px"></canvas></div>
+</div></section></main>
+<script type="module">
+import {COMMUNES,getHistoryLive} from './js/data/live.js';
+const c=COMMUNES[0];
+function bars(id,labels,data){const el=document.getElementById(id);const ctx=el.getContext('2d');const w=el.width=el.clientWidth,h=el.height=200;ctx.clearRect(0,0,w,h);const pad=20;const bw=(w-pad*2)/data.length*.7;const mx=Math.max(...data,1);labels.forEach((lab,i)=>{const x=pad+i*((w-pad*2)/data.length)+(((w-pad*2)/data.length-bw)/2);const y=h-(data[i]/mx)*(h-pad*2)-pad;const bh=h-pad-y;ctx.fillStyle='#7aa2f7';ctx.fillRect(x,y,bw,bh);ctx.fillStyle='#aaa';ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText(lab.slice(5),x+bw/2,h-4);});}
+(async()=>{const h=await getHistoryLive(c.lat,c.lon);bars('precip',h.labels,h.precip);bars('gusts',h.labels,h.gustMax);bars('temp',h.labels,h.tempAvg);})();
+</script></body></html>

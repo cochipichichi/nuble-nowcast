@@ -1,180 +1,22 @@
-<!doctype html>
-<html lang="es" data-theme="dark">
-<head>
+<!doctype html><html lang="es" data-theme="dark"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Clima Extremo Ñuble — Nowcast</title>
-<meta name="theme-color" content="#0d1117">
-<link rel="manifest" href="public/manifest.webmanifest">
-<link rel="icon" href="assets/icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css">
-<script type="module" src="js/ui.js"></script>
+<title>Ñuble Nowcast</title>
+<link rel="manifest" href="public/manifest.webmanifest"><link rel="icon" href="assets/icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css"></head><body>
+<header class="header"><div class="brand"><span class="logo"></span><strong>Ñuble Nowcast</strong></div>
+<nav><a class="btn" href="./map.html">🗺️ Mapa</a> <a class="btn" href="./history.html">📚 Historial</a> <a class="btn" href="./kiosk.html">📺 Kiosko</a></nav></header>
+<main class="container">
+<section class="card"><h1>🌪️ Dashboard</h1>
+<div class="grid cards">
+<div class="card"><h3>🌧️ Lluvia</h3><canvas id="rain" style="width:100%;height:180px"></canvas></div>
+<div class="card"><h3>💨 Viento</h3><canvas id="wind" style="width:100%;height:180px"></canvas></div>
+<div class="card"><h3>🌡️ Temperatura</h3><canvas id="temp" style="width:100%;height:180px"></canvas></div>
+<div class="card"><h3>🌬️ Ráfagas (24h)</h3><canvas id="gusts" style="width:100%;height:90px"></canvas><p class="meta">Máx: <span id="gmax">–</span> m/s</p></div>
+</div></section></main>
 <script type="module">
-import {initTheme} from './js/ui.js';
-addEventListener('DOMContentLoaded', initTheme);
+import {COMMUNES,getNowcastLive,getGustsLive} from './js/data/live.js';
+const selCommIndex=0; const C=COMMUNES[selCommIndex];
+function draw(id,data,color){const el=document.getElementById(id);const ctx=el.getContext('2d');const w=el.width=el.clientWidth,h=el.height;ctx.clearRect(0,0,w,h);ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();data.forEach((v,i)=>{const x=i*(w/(data.length-1));const y=h-(v/Math.max(...data))*h*0.9-h*0.05;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();}
+(async()=>{const n=await getNowcastLive(C.lat,C.lon);draw('rain',n.series.rain_mm,'#7aa2f7');draw('wind',n.series.wind_ms,'#f2cc60');draw('temp',n.series.temp_c,'#f57');const g=await getGustsLive(C.lat,C.lon);draw('gusts',g.values,'#ccc');document.getElementById('gmax').textContent=g.max.toFixed(1);})();
 </script>
-</head>
-<body>
-<nav class="skip-links"><a href="#main">Saltar al contenido</a></nav>
-<header class="header" role="banner">
-  <div class="brand"><span class="logo" aria-hidden="true"></span><strong>Ñuble Nowcast</strong><span class="badge">LIVE + Offline</span></div>
-  <nav aria-label="Principal" style="display:flex;gap:8px;align-items:center">
-    <a class="btn link" href="./map.html">🗺️ Mapa</a>
-    <a class="btn link" href="./prep.html">🧰 Preparación</a>
-    <button class="btn" id="theme">🌓 Tema</button>
-  </nav>
-</header>
-
-<main id="main" class="container">
-  <section class="card">
-    <h1>🌪️ Clima Extremo Ñuble — Nowcast</h1>
-    <p class="meta">Cambia entre <strong>Live</strong> (Internet) y <strong>Offline</strong> (datos locales). Radar y FIRMS están en el Mapa.</p>
-    <div class="switch" style="margin-top:8px">
-      <label><input type="radio" name="mode" value="live" checked> Live</label>
-      <label><input type="radio" name="mode" value="offline"> Offline</label>
-      <label for="commune" class="meta" style="margin-left:8px">Comuna:</label>
-      <select id="commune" class="btn" style="padding:.4rem .6rem"></select>
-    </div>
-    <div class="actions" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-      <button class="btn" id="share">🔗 Compartir</button>
-      <button class="btn" id="print">🧾 Exportar PDF</button>
-    </div>
-  </section>
-
-  <section class="grid cards">
-    <div class="card">
-      <h3>🚨 Alertas actuales</h3>
-      <div id="alerts">Cargando…</div>
-      <div class="meta" id="alerts-upd"></div>
-    </div>
-
-    <div class="card">
-      <h3>🌧️ Lluvia (últ. 90 min)</h3>
-      <canvas id="rain" style="width:100%;height:180px"></canvas>
-    </div>
-
-    <div class="card">
-      <h3>💨 Viento (últ. 90 min)</h3>
-      <canvas id="wind" style="width:100%;height:180px"></canvas>
-    </div>
-
-    <div class="card">
-      <h3>🌡️ Temperatura (últ. 90 min)</h3>
-      <canvas id="temp" style="width:100%;height:180px"></canvas>
-    </div>
-
-    <div class="card">
-      <h3>🌬️ Ráfaga máx. (24h)</h3>
-      <canvas id="gusts" style="width:100%;height:80px"></canvas>
-      <p class="meta">Máxima: <span id="gusts-max">–</span> m/s</p>
-    </div>
-  </section>
-
-  <footer>
-    <p>Hecho con ❤️ — Proyecto educativo para Ñuble | Accesibilidad, modo oscuro, LIVE + offline.</p>
-  </footer>
-</main>
-
-<script>
-if('serviceWorker' in navigator && location.protocol==='https:'){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
-document.getElementById('theme')?.addEventListener('click',()=>{
-  const cur = document.documentElement.getAttribute('data-theme')||'dark';
-  document.documentElement.setAttribute('data-theme', cur==='dark'?'hc':'dark');
-});
-
-function drawLine(canvasId, data, color){
-  const el=document.getElementById(canvasId); if(!el) return;
-  const ctx=el.getContext('2d'); const w=el.width=el.clientWidth, h=el.height=180;
-  ctx.clearRect(0,0,w,h); ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath();
-  data.forEach((v,i)=>{ const x=i*(w/(data.length-1)); const y=h-(v/Math.max(...data))*h*0.9-h*0.05; i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
-  ctx.stroke();
-}
-function drawSpark(id, data){
-  const el=document.getElementById(id); if(!el) return;
-  const ctx=el.getContext('2d'); const w=el.width=el.clientWidth, h=el.height=80;
-  ctx.clearRect(0,0,w,h); if(!data.length) return;
-  ctx.strokeStyle='#ccc'; ctx.lineWidth=1.5; ctx.beginPath();
-  data.forEach((v,i)=>{ const x=i*(w/(data.length-1)); const y=h-(v/Math.max(...data))*h*0.9-h*0.05; i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
-  ctx.stroke();
-}
-
-function getParam(k){ return new URL(location.href).searchParams.get(k); }
-function setParams(params){
-  const url = new URL(location.href);
-  Object.entries(params).forEach(([k,v])=> url.searchParams.set(k, v));
-  history.replaceState(null, '', url.toString());
-  return url.toString();
-}
-async function doShare(){
-  const mode = document.querySelector('input[name="mode"]:checked').value;
-  const sel = document.getElementById('commune');
-  const communeIndex = sel ? sel.value : '0';
-  const url = setParams({mode, c: communeIndex});
-  const data = { title: 'Ñuble Nowcast', text: 'Panel de clima para Ñuble', url };
-  if(navigator.share){ try{ await navigator.share(data); }catch(e){} }
-  else{
-    try{ await navigator.clipboard.writeText(url); alert('Enlace copiado: ' + url); }catch{ alert(url); }
-  }
-}
-document.getElementById('share')?.addEventListener('click', doShare);
-document.getElementById('print')?.addEventListener('click', ()=> window.print());
-
-async function loadAlertsOffline(){
-  const a = await fetch('./../data/alerts.json').then(r=>r.json());
-  const cont = document.getElementById('alerts');
-  cont.innerHTML = a.map(x=>`<div class="alert ${x.level}"><strong>${x.title}</strong><br><span class="meta">${x.desc} — ${x.valid_for}</span></div>`).join('');
-}
-
-async function loadSeries(mode, lat=-36.495, lon=-72.198){
-  if(mode==='live'){
-    const mod = await import('./js/data/live.js');
-    const n = await mod.getNowcastLive(lat, lon);
-    drawLine('rain', n.series.rain_mm, '#7aa2f7');
-    drawLine('wind', n.series.wind_ms, '#f2cc60');
-    drawLine('temp', n.series.temp_c,  '#f57');
-    document.getElementById('alerts-upd').textContent = 'Actualizado: ' + n.updated_at;
-    await loadAlertsOffline();
-    try{
-      const g = await mod.getGustsLive(lat, lon);
-      drawSpark('gusts', g.values);
-      document.getElementById('gusts-max').textContent = g.max.toFixed(1);
-    }catch(e){}
-  } else {
-    const n = await fetch('./../data/nowcast.json').then(r=>r.json());
-    drawLine('rain', n.series.rain_mm, '#7aa2f7');
-    drawLine('wind', n.series.wind_ms, '#f2cc60');
-    drawLine('temp', n.series.temp_c,  '#f57');
-    document.getElementById('alerts-upd').textContent = 'Actualizado: ' + (n.updated_at||'');
-    await loadAlertsOffline();
-    drawSpark('gusts', []);
-    document.getElementById('gusts-max').textContent = '–';
-  }
-}
-
-async function populateCommunes(){
-  const mod = await import('./js/data/live.js');
-  const sel = document.getElementById('commune');
-  sel.innerHTML = mod.COMMUNES.map((c,i)=>`<option value="${i}">${c.name}</option>`).join("");
-  const saved = localStorage.getItem('communeIndex');
-  if(saved!==null) sel.value = saved;
-  sel.addEventListener('change', ()=>{ localStorage.setItem('communeIndex', sel.value); reloadLive(); });
-}
-async function reloadLive(){
-  const mode = document.querySelector('input[name="mode"]:checked').value;
-  const mod = await import('./js/data/live.js');
-  const sel = document.getElementById('commune');
-  const c = mod.COMMUNES[parseInt(sel.value||"0",10)]||mod.COMMUNES[0];
-  await loadSeries(mode, c.lat, c.lon);
-}
-const radios = document.querySelectorAll('input[name="mode"]');
-radios.forEach(r=>r.addEventListener('change', reloadLive));
-
-function applyParams(){
-  const qMode = getParam('mode');
-  const qC = getParam('c');
-  if(qMode){ const r = document.querySelector(`input[name="mode"][value="${qMode}"]`); if(r){ r.checked = true; }}
-  if(qC){ const sel = document.getElementById('commune'); if(sel){ sel.value = qC; localStorage.setItem('communeIndex', qC); }}
-}
-populateCommunes().then(()=>{ applyParams(); reloadLive(); });
-</script>
-</body>
-</html>
+</body></html>

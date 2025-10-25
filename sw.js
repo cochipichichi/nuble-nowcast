@@ -1,23 +1,3 @@
-self.addEventListener('install', e => {
-  self.skipWaiting();
-  e.waitUntil(caches.open('nuble-nowcast-live-v1').then(c => c.addAll([
-    './','./index.html','./map.html','./prep.html',
-    './css/style.css','./js/ui.js','./js/data/offline.js','./public/manifest.webmanifest'
-  ])));
-});
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
-self.addEventListener('fetch', e => {
-  if(e.request.method!=='GET') return;
-  e.respondWith((async()=>{
-    const cache = await caches.open('nuble-nowcast-live-v1');
-    const cached = await cache.match(e.request);
-    if(cached) return cached;
-    try{
-      const resp = await fetch(e.request);
-      cache.put(e.request, resp.clone()).catch(()=>{});
-      return resp;
-    }catch{
-      return cache.match('./index.html');
-    }
-  })());
-});
+self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open('nuble-nowcast-live-v2').then(c=>c.addAll(['./','./index.html','./map.html','./history.html','./kiosk.html','./prep.html','./css/style.css','./js/ui.js','./js/data/offline.js','./public/manifest.webmanifest'])))});
+self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith((async()=>{const cache=await caches.open('nuble-nowcast-live-v2');const cached=await cache.match(e.request);if(cached)return cached;try{const resp=await fetch(e.request);cache.put(e.request,resp.clone()).catch(()=>{});return resp;}catch{return cache.match('./index.html');}})())});

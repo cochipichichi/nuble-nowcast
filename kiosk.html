@@ -1,0 +1,12 @@
+<!doctype html><html lang="es" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kiosko — Ñuble Nowcast</title>
+<link rel="icon" href="assets/icons/icon-192.png"><link rel="stylesheet" href="css/style.css">
+<style>header.header,.actions,.switch{display:none}.container{max-width:1400px}</style></head>
+<body><header class="header"><div class="brand"><span class="logo"></span><strong>Kiosko</strong></div></header>
+<main class="container"><iframe id="dash" src="./index.html?mode=live" style="width:100%;height:85vh;border:none;border-radius:16px;overflow:hidden;background:transparent"></iframe>
+<p class="meta">Auto-actualiza cada 5 min. Usa F11 para pantalla completa.</p></main>
+<script>
+const iframe=document.getElementById('dash');
+setInterval(()=>{const u=new URL(iframe.src);u.searchParams.set('_',Date.now().toString());iframe.src=u.toString();},300000);
+</script></body></html>

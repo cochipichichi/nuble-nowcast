@@ -1,81 +1,18 @@
-<!doctype html>
-<html lang="es" data-theme="dark">
-<head>
+<!doctype html><html lang="es" data-theme="dark"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mapa — Ñuble Nowcast</title>
-<link rel="icon" href="assets/icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-</head>
-<body>
-<header class="header"><div class="brand"><span class="logo"></span><strong>Mapa</strong></div><nav><a class="btn link" href="./index.html">Inicio</a></nav></header>
-<main class="container">
-  <section class="card">
-    <h1>🗺️ Mapa con capas (Radar + FIRMS)</h1>
-    <div class="switch" style="display:flex;gap:16px;flex-wrap:wrap;margin:8px 0">
-      <label><input type="checkbox" id="toggleRadar" checked> 🌧️ Radar (RainViewer)</label>
-      <label><input type="checkbox" id="toggleFIRMS"> 🔥 FIRMS NASA (WMS)</label>
-    </div>
-    <div id="map" class="leaflet-container" role="application" aria-label="Mapa interactivo"></div>
-    <p class="meta">Activa/Desactiva overlays. FIRMS requiere `MAP_KEY` en <code>js/data/live.js</code>.</p>
-  </section>
-</main>
+<link rel="icon" href="assets/icons/icon-192.png"><link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script></head>
+<body><header class="header"><div class="brand"><span class="logo"></span><strong>Mapa</strong></div><nav><a class="btn" href="./index.html">Inicio</a> <a class="btn" href="./history.html">📚 Historial</a> <a class="btn" href="./kiosk.html">📺 Kiosko</a></nav></header>
+<main class="container"><section class="card"><h1>🗺️ Radar & FIRMS</h1>
+<label><input type="checkbox" id="radar" checked> 🌧️ Radar</label> <label><input type="checkbox" id="firms"> 🔥 FIRMS</label>
+<div id="map" class="leaflet-container"></div></section></main>
 <script type="module">
-import {getLayers} from './js/data/offline.js';
-import {getRainViewerTemplate, getFIRMSUrl} from './js/data/live.js';
-
-const map = L.map('map').setView([-36.49,-72.20], 9);
-const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
-
-let radarLayer = null, firmsLayer = null;
-
-async function ensureRadar(){
-  if(radarLayer) return radarLayer;
-  try{
-    const template = await getRainViewerTemplate();
-    radarLayer = L.tileLayer(template, {opacity:0.6, attribution:'Radar © RainViewer'});
-    return radarLayer;
-  }catch(e){
-    console.error(e); return null;
-  }
-}
-function ensureFIRMS(){
-  if(firmsLayer) return firmsLayer;
-  const wms = getFIRMSUrl();
-  if(!wms){ alert('FIRMS MAP_KEY no configurada. Edita js/data/live.js'); return null; }
-  firmsLayer = L.tileLayer.wms(wms, {
-    layers: 'fires_modis_24', format: 'image/png', transparent: true, attribution: 'FIRMS/NASA'
-  });
-  return firmsLayer;
-}
-
-document.getElementById('toggleRadar').addEventListener('change', async (e)=>{
-  const on = e.target.checked;
-  if(on){ const l = await ensureRadar(); if(l) l.addTo(map); }
-  else if(radarLayer){ map.removeLayer(radarLayer); }
-});
-document.getElementById('toggleFIRMS').addEventListener('change', (e)=>{
-  const on = e.target.checked;
-  if(on){ const l = ensureFIRMS(); if(l) l.addTo(map); }
-  else if(firmsLayer){ map.removeLayer(firmsLayer); }
-});
-
-// Capa local de ejemplo
-(async function(){
-  try{
-    const gj = await getLayers();
-    const layer = L.geoJSON(gj, {
-      style: f=>({color:'#2f81f7',weight:2,fillOpacity:0.15}),
-      pointToLayer: (f,latlng)=> L.circleMarker(latlng, {radius:8, color:'#d29922'}),
-      onEachFeature: (f,layer)=> layer.bindPopup(`<strong>${f.properties.name}</strong><br><span class="meta">${f.properties.risk||''}</span>`)
-    }).addTo(map);
-    map.fitBounds(layer.getBounds(), {padding:[20,20]});
-  }catch(e){ console.error(e); }
-})();
-
-// Inicializa radar ON
-(async()=>{ const l = await ensureRadar(); if(l) l.addTo(map); })();
-</script>
-</body>
-</html>
+import {getLayers} from './js/data/offline.js'; import {getRainViewerTemplate,getFIRMSUrl} from './js/data/live.js';
+const map=L.map('map').setView([-36.49,-72.20],9); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+let radar=null,firms=null; async function addRadar(){ if(radar) return radar; const t=await getRainViewerTemplate(); radar=L.tileLayer(t,{opacity:.6,attribution:'Radar © RainViewer'}); return radar; }
+function addFirms(){ if(firms) return firms; const wms=getFIRMSUrl(); if(!wms){alert('Configura FIRMS_MAP_KEY'); return null;} firms=L.tileLayer.wms(wms,{layers:'fires_modis_24',format:'image/png',transparent:true,attribution:'FIRMS/NASA'}); return firms; }
+document.getElementById('radar').addEventListener('change',async e=>{ if(e.target.checked){const l=await addRadar(); if(l) l.addTo(map);} else if(radar){map.removeLayer(radar);} });
+document.getElementById('firms').addEventListener('change', e=>{ if(e.target.checked){const l=addFirms(); if(l) l.addTo(map);} else if(firms){map.removeLayer(firms);} });
+(async()=>{ const gj=await getLayers(); const Lyr=L.geoJSON(gj,{pointToLayer:(f,latlng)=>L.circleMarker(latlng,{radius:8,color:'#d29922'}),onEachFeature:(f,l)=>l.bindPopup(`<strong>${f.properties.name}</strong><br><span class='meta'>${f.properties.risk||''}</span>`)}).addTo(map); map.fitBounds(Lyr.getBounds(),{padding:[20,20]}); const l=await addRadar(); if(l) l.addTo(map); })();
+</script></body></html>
