@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clima Extremo Ñuble — Nowcast</title>
+<meta name="theme-color" content="#0d1117">
+<link rel="manifest" href="public/manifest.webmanifest">
+<link rel="icon" href="assets/icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+<script type="module" src="js/ui.js"></script>
+<script type="module">
+import {initTheme} from './js/ui.js';
+addEventListener('DOMContentLoaded', initTheme);
+</script>
+</head>
+<body>
+<nav class="skip-links"><a href="#main">Saltar al contenido</a></nav>
+<header class="header" role="banner">
+  <div class="brand"><span class="logo" aria-hidden="true"></span><strong>Ñuble Nowcast</strong><span class="badge">LIVE + Offline</span></div>
+  <nav aria-label="Principal" style="display:flex;gap:8px;align-items:center">
+    <a class="btn link" href="./map.html">🗺️ Mapa</a>
+    <a class="btn link" href="./prep.html">🧰 Preparación</a>
+    <button class="btn" id="theme">🌓 Tema</button>
+  </nav>
+</header>
+
+<main id="main" class="container">
+  <section class="card">
+    <h1>🌪️ Clima Extremo Ñuble — Nowcast</h1>
+    <p class="meta">Cambia entre <strong>Live</strong> (Internet) y <strong>Offline</strong> (datos locales). Radar y FIRMS están en el Mapa.</p>
+    <div class="switch" style="margin-top:8px">
+      <label><input type="radio" name="mode" value="live" checked> Live</label>
+      <label><input type="radio" name="mode" value="offline"> Offline</label>
+    </div>
+  </section>
+
+  <section class="grid cards">
+    <div class="card">
+      <h3>🚨 Alertas actuales</h3>
+      <div id="alerts">Cargando…</div>
+      <div class="meta" id="alerts-upd"></div>
+    </div>
+
+    <div class="card">
+      <h3>🌧️ Lluvia (últ. 90 min)</h3>
+      <canvas id="rain" style="width:100%;height:180px"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>💨 Viento (últ. 90 min)</h3>
+      <canvas id="wind" style="width:100%;height:180px"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>🌡️ Temperatura (últ. 90 min)</h3>
+      <canvas id="temp" style="width:100%;height:180px"></canvas>
+    </div>
+  </section>
+
+  <footer>
+    <p>Hecho con ❤️ — Proyecto educativo para Ñuble | Accesibilidad, modo oscuro, LIVE + offline.</p>
+  </footer>
+</main>
+
+<script>
+if('serviceWorker' in navigator && location.protocol==='https:'){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
+document.getElementById('theme')?.addEventListener('click',()=>{
+  const cur = document.documentElement.getAttribute('data-theme')||'dark';
+  document.documentElement.setAttribute('data-theme', cur==='dark'?'hc':'dark');
+});
+
+function drawLine(canvasId, data, color){
+  const el=document.getElementById(canvasId); if(!el) return;
+  const ctx=el.getContext('2d'); const w=el.width=el.clientWidth, h=el.height=180;
+  ctx.clearRect(0,0,w,h); ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath();
+  data.forEach((v,i)=>{ const x=i*(w/(data.length-1)); const y=h-(v/Math.max(...data))*h*0.9-h*0.05; i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.stroke();
+}
+
+async function loadAlertsOffline(){
+  const a = await fetch('./../data/alerts.json').then(r=>r.json());
+  const cont = document.getElementById('alerts');
+  cont.innerHTML = a.map(x=>`<div class="alert ${x.level}"><strong>${x.title}</strong><br><span class="meta">${x.desc} — ${x.valid_for}</span></div>`).join('');
+}
+
+async function loadSeries(mode){
+  if(mode==='live'){
+    // Live: Open‑Meteo
+    const mod = await import('./js/data/live.js');
+    const n = await mod.getNowcastLive();
+    drawLine('rain', n.series.rain_mm, '#7aa2f7');
+    drawLine('wind', n.series.wind_ms, '#f2cc60');
+    drawLine('temp', n.series.temp_c,  '#f57');
+    document.getElementById('alerts-upd').textContent = 'Actualizado: ' + n.updated_at;
+    // Alertas siguen siendo locales a menos que conectes una API oficial
+    await loadAlertsOffline();
+  } else {
+    // Offline
+    const n = await fetch('./../data/nowcast.json').then(r=>r.json());
+    drawLine('rain', n.series.rain_mm, '#7aa2f7');
+    drawLine('wind', n.series.wind_ms, '#f2cc60');
+    drawLine('temp', n.series.temp_c,  '#f57');
+    document.getElementById('alerts-upd').textContent = 'Actualizado: ' + (n.updated_at||'');
+    await loadAlertsOffline();
+  }
+}
+
+const radios = document.querySelectorAll('input[name="mode"]');
+radios.forEach(r=>r.addEventListener('change',()=>loadSeries(document.querySelector('input[name="mode"]:checked').value)));
+loadSeries('live');
+</script>
+</body>
+</html>
