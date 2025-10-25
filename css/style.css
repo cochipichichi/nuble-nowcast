@@ -23,5 +23,13 @@ footer{margin-top:40px;padding:24px;border-top:1px solid #0000001a;color:var(--m
 .alert.verde{border-color:#2ea04355}
 .table{width:100%;border-collapse:collapse}.table th,.table td{border-bottom:1px solid #00000022;padding:8px 6px;text-align:left}
 .leaflet-container{height:70vh;border-radius:16px;overflow:hidden;border:1px solid #00000022}
-.switch{display:inline-flex;align-items:center;gap:8px}
-.switch input{accent-color:var(--accent)}
+.switch{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* Print to PDF */
+@media print{
+  header.header, nav.skip-links, .switch, .btn.link, .btn#print, .btn#share { display:none !important; }
+  body{ background:#fff; color:#000; }
+  .container{ max-width:100%; padding:0 12mm; }
+  .card{ border:1px solid #000; break-inside: avoid; }
+  footer{ color:#000; }
+}

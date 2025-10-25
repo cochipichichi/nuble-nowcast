@@ -40,7 +40,6 @@ async function ensureRadar(){
     console.error(e); return null;
   }
 }
-
 function ensureFIRMS(){
   if(firmsLayer) return firmsLayer;
   const wms = getFIRMSUrl();
@@ -56,7 +55,6 @@ document.getElementById('toggleRadar').addEventListener('change', async (e)=>{
   if(on){ const l = await ensureRadar(); if(l) l.addTo(map); }
   else if(radarLayer){ map.removeLayer(radarLayer); }
 });
-
 document.getElementById('toggleFIRMS').addEventListener('change', (e)=>{
   const on = e.target.checked;
   if(on){ const l = ensureFIRMS(); if(l) l.addTo(map); }

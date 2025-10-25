@@ -31,6 +31,12 @@ addEventListener('DOMContentLoaded', initTheme);
     <div class="switch" style="margin-top:8px">
       <label><input type="radio" name="mode" value="live" checked> Live</label>
       <label><input type="radio" name="mode" value="offline"> Offline</label>
+      <label for="commune" class="meta" style="margin-left:8px">Comuna:</label>
+      <select id="commune" class="btn" style="padding:.4rem .6rem"></select>
+    </div>
+    <div class="actions" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button class="btn" id="share">🔗 Compartir</button>
+      <button class="btn" id="print">🧾 Exportar PDF</button>
     </div>
   </section>
 
@@ -55,6 +61,12 @@ addEventListener('DOMContentLoaded', initTheme);
       <h3>🌡️ Temperatura (últ. 90 min)</h3>
       <canvas id="temp" style="width:100%;height:180px"></canvas>
     </div>
+
+    <div class="card">
+      <h3>🌬️ Ráfaga máx. (24h)</h3>
+      <canvas id="gusts" style="width:100%;height:80px"></canvas>
+      <p class="meta">Máxima: <span id="gusts-max">–</span> m/s</p>
+    </div>
   </section>
 
   <footer>
@@ -76,6 +88,35 @@ function drawLine(canvasId, data, color){
   data.forEach((v,i)=>{ const x=i*(w/(data.length-1)); const y=h-(v/Math.max(...data))*h*0.9-h*0.05; i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
   ctx.stroke();
 }
+function drawSpark(id, data){
+  const el=document.getElementById(id); if(!el) return;
+  const ctx=el.getContext('2d'); const w=el.width=el.clientWidth, h=el.height=80;
+  ctx.clearRect(0,0,w,h); if(!data.length) return;
+  ctx.strokeStyle='#ccc'; ctx.lineWidth=1.5; ctx.beginPath();
+  data.forEach((v,i)=>{ const x=i*(w/(data.length-1)); const y=h-(v/Math.max(...data))*h*0.9-h*0.05; i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.stroke();
+}
+
+function getParam(k){ return new URL(location.href).searchParams.get(k); }
+function setParams(params){
+  const url = new URL(location.href);
+  Object.entries(params).forEach(([k,v])=> url.searchParams.set(k, v));
+  history.replaceState(null, '', url.toString());
+  return url.toString();
+}
+async function doShare(){
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  const sel = document.getElementById('commune');
+  const communeIndex = sel ? sel.value : '0';
+  const url = setParams({mode, c: communeIndex});
+  const data = { title: 'Ñuble Nowcast', text: 'Panel de clima para Ñuble', url };
+  if(navigator.share){ try{ await navigator.share(data); }catch(e){} }
+  else{
+    try{ await navigator.clipboard.writeText(url); alert('Enlace copiado: ' + url); }catch{ alert(url); }
+  }
+}
+document.getElementById('share')?.addEventListener('click', doShare);
+document.getElementById('print')?.addEventListener('click', ()=> window.print());
 
 async function loadAlertsOffline(){
   const a = await fetch('./../data/alerts.json').then(r=>r.json());
@@ -83,31 +124,57 @@ async function loadAlertsOffline(){
   cont.innerHTML = a.map(x=>`<div class="alert ${x.level}"><strong>${x.title}</strong><br><span class="meta">${x.desc} — ${x.valid_for}</span></div>`).join('');
 }
 
-async function loadSeries(mode){
+async function loadSeries(mode, lat=-36.495, lon=-72.198){
   if(mode==='live'){
-    // Live: Open‑Meteo
     const mod = await import('./js/data/live.js');
-    const n = await mod.getNowcastLive();
+    const n = await mod.getNowcastLive(lat, lon);
     drawLine('rain', n.series.rain_mm, '#7aa2f7');
     drawLine('wind', n.series.wind_ms, '#f2cc60');
     drawLine('temp', n.series.temp_c,  '#f57');
     document.getElementById('alerts-upd').textContent = 'Actualizado: ' + n.updated_at;
-    // Alertas siguen siendo locales a menos que conectes una API oficial
     await loadAlertsOffline();
+    try{
+      const g = await mod.getGustsLive(lat, lon);
+      drawSpark('gusts', g.values);
+      document.getElementById('gusts-max').textContent = g.max.toFixed(1);
+    }catch(e){}
   } else {
-    // Offline
     const n = await fetch('./../data/nowcast.json').then(r=>r.json());
     drawLine('rain', n.series.rain_mm, '#7aa2f7');
     drawLine('wind', n.series.wind_ms, '#f2cc60');
     drawLine('temp', n.series.temp_c,  '#f57');
     document.getElementById('alerts-upd').textContent = 'Actualizado: ' + (n.updated_at||'');
     await loadAlertsOffline();
+    drawSpark('gusts', []);
+    document.getElementById('gusts-max').textContent = '–';
   }
 }
 
+async function populateCommunes(){
+  const mod = await import('./js/data/live.js');
+  const sel = document.getElementById('commune');
+  sel.innerHTML = mod.COMMUNES.map((c,i)=>`<option value="${i}">${c.name}</option>`).join("");
+  const saved = localStorage.getItem('communeIndex');
+  if(saved!==null) sel.value = saved;
+  sel.addEventListener('change', ()=>{ localStorage.setItem('communeIndex', sel.value); reloadLive(); });
+}
+async function reloadLive(){
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  const mod = await import('./js/data/live.js');
+  const sel = document.getElementById('commune');
+  const c = mod.COMMUNES[parseInt(sel.value||"0",10)]||mod.COMMUNES[0];
+  await loadSeries(mode, c.lat, c.lon);
+}
 const radios = document.querySelectorAll('input[name="mode"]');
-radios.forEach(r=>r.addEventListener('change',()=>loadSeries(document.querySelector('input[name="mode"]:checked').value)));
-loadSeries('live');
+radios.forEach(r=>r.addEventListener('change', reloadLive));
+
+function applyParams(){
+  const qMode = getParam('mode');
+  const qC = getParam('c');
+  if(qMode){ const r = document.querySelector(`input[name="mode"][value="${qMode}"]`); if(r){ r.checked = true; }}
+  if(qC){ const sel = document.getElementById('commune'); if(sel){ sel.value = qC; localStorage.setItem('communeIndex', qC); }}
+}
+populateCommunes().then(()=>{ applyParams(); reloadLive(); });
 </script>
 </body>
 </html>
